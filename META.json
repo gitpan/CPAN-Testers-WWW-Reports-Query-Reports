@@ -1,19 +1,19 @@
 {
     "name": "CPAN-Testers-WWW-Reports-Query-Reports",
-    "version": "0.07",
+    "version": "0.08",
     "abstract": "Retrieve CPAN Testers metadata direct from the CPAN Testers website",
     "author": [
         "Barbie (BARBIE) <barbie@cpan.org>"
     ],
 
-    "license": "artistic_2",
+    "license": [ "artistic_2" ],
     "dynamic_config" : 0,
     "release_status" : "stable",
     "meta-spec": {
         "version": "2",
         "url": "http://search.cpan.org/dist/CPAN-Meta/lib/CPAN/Meta/Spec.pm"
     },
-    "generated_by": "Barbie's Brain 1.0",
+    "generated_by": "The Hand of Barbie 1.0",
     "keywords" : [
         "qa",
         "cpan",
@@ -25,8 +25,8 @@
         "runtime" : {
             "requires" : {
                 "perl": "5.006",
-                "WWW::Mechanize": "0",
-                "JSON::XS": "0"
+                "JSON::XS": "0",
+                "WWW::Mechanize": "0"
             }
         },
         "test" : {
@@ -46,7 +46,7 @@
     "provides": {
         "CPAN::Testers::WWW::Reports::Query::Reports": {
             "file": "lib/CPAN/Testers/WWW/Reports/Query/Reports.pm",
-            "version": "0.07"
+            "version": "0.08"
         }
     },
     "no_index": {
@@ -54,7 +54,8 @@
     },
 
     "resources": {
-        "license": "http://www.perlfoundation.org/artistic_license_2_0",
+        "homepage": "https://www.cpantesters.org",
+        "license": [ "http://www.perlfoundation.org/artistic_license_2_0" ],
         "bugtracker": { "web": "http://rt.cpan.org/Public/Dist/Display.html?Name=CPAN-Testers-WWW-Reports-Query-Reports" },
         "repository": {
             "url": "git://github.com/barbie/cpan-testers-www-reports-query-reports.git",
