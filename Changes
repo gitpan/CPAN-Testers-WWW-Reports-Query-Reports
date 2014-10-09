@@ -1,6 +1,11 @@
 Revision history for CPAN-Testers-WWW-Reports-Query-Reports
 ===========================================================
 
+0.09	2014-10-09
+        - realignment of bad data tests.
+        - added timeout skips.
+        - added non-live tests.
+
 0.08	2014-09-28
         - fixed license fields in META.json to be lists.
         - added homepage to META resources.

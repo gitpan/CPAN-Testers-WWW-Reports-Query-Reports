@@ -2,10 +2,29 @@
 use strict;
 
 use lib qw(./lib);
-use Test::More tests => 28;
+use Test::More tests => 23;
 
 use CPAN::Testers::WWW::Reports::Query::Reports;
 #use Data::Dumper;
+
+my $nomock;
+my ($mock,$url,%raw);
+
+BEGIN {
+	eval "use Test::MockObject";
+    $nomock = $@;
+
+    unless($nomock) {
+        $mock = Test::MockObject->new();
+        $mock->fake_module( 'WWW::Mechanize', 
+            'get'       => sub { $url = $_[1]; return; },  
+            'success'   => sub { return 1; },  
+            'content'   => sub { return $raw{$url} } 
+        );
+        $mock->fake_new( 'WWW::Mechanize' );
+        $mock->set_true( qw(success) );
+    }
+}
 
 # various argument sets for examples
 
@@ -58,7 +77,9 @@ my @args = (
                         'type'      => '2',
                         'tester'    => 'schinder@pobox.com'
                    } },
-        error   => ''
+        error   => '',
+        raw     => '{"7211":{"version":"1.25","dist":"GD","osvers":"2.7","state":"pass","perl":"5.5.3","fulldate":"200002231727","osname":"solaris","postdate":"200002","type":"2","id":"7211","guid":"00007211-b19f-3f77-b713-d32bba55d77f","platform":"sun4-solaris","tester":"schinder@pobox.com"}}
+'
     },
     { 
         range   => '-7211',
@@ -79,142 +100,91 @@ my @args = (
                         'type'      => '2',
                         'tester'    => 'schinder@pobox.com'
                    } },
-        error   => ''
+        error   => '',
+        raw     => '{"7211":{"version":"1.25","dist":"GD","osvers":"2.7","state":"pass","perl":"5.5.3","fulldate":"200002231727","osname":"solaris","postdate":"200002","type":"2","id":"7211","guid":"00007211-b19f-3f77-b713-d32bba55d77f","platform":"sun4-solaris","tester":"schinder@pobox.com"}}
+'
     },
     { 
         range   => '-',
         count   => 2500,
-        error   => ''
-    },
+        error   => '',
+        raw     => '{"7211":{"version":"1.25","dist":"GD","osvers":"2.7","state":"pass","perl":"5.5.3","fulldate":"200002231727","osname":"solaris","postdate":"200002","type":"2","id":"7211","guid":"00007211-b19f-3f77-b713-d32bba55d77f","platform":"sun4-solaris","tester":"schinder@pobox.com"}}
+'
+    }
 );
 
-# bad data
-my @bad = (
-    { 
-        date    => '',
-        results => undef,
-        error   => undef
-    },
-    { 
-        date    => 'blah',
-        results => undef,
-        error   => undef
-    },
-    { 
-        range   => '',
-        results => undef,
-        error   => undef
-    },
-    { 
-        range   => 'blah',
-        results => undef,
-        error   => undef
-    },
-);
+for my $arg (@args) {
+    next    unless($arg->{raw});
 
-my $query = CPAN::Testers::WWW::Reports::Query::Reports->new();
-isa_ok($query,'CPAN::Testers::WWW::Reports::Query::Reports');
-
-{
-    for my $args (@bad) {
-        if(defined $args->{date}) {
-            my $data = $query->date( $args->{date} );
-            is($data, undef,".. got no results, as expected for date [$args->{date}]");
-        } elsif(defined $args->{range}) {
-            my $data = $query->range( $args->{range} );
-            is($data, undef,".. got no results, as expected for range [$args->{range}]");
-        }
-        is($query->error,$args->{error},'.. no error reported');
+    if($arg->{date}) {
+        $raw{'http://www.cpantesters.org/cgi-bin/reports-metadata.cgi?date=' . $arg->{date}} = $arg->{raw}; 
+    } elsif($arg->{range}) {
+        $raw{'http://www.cpantesters.org/cgi-bin/reports-metadata.cgi?range=' . $arg->{range}} = $arg->{raw}; 
     }
 }
 
+#diag("raw=".Dumper(\%raw));
+
 SKIP: {
-    skip "Network unavailable", 19 if(pingtest());
+	skip "Test::MockObject required for plugin testing\n", 23   if($nomock);
+
+    my $query = CPAN::Testers::WWW::Reports::Query::Reports->new();
+    isa_ok($query,'CPAN::Testers::WWW::Reports::Query::Reports');
 
     for my $args (@args) {
         if(defined $args->{date}) {
             my $data = $query->date( $args->{date} );
             my $skip = $args->{results} ? scalar(keys %{$args->{results}}) : 0;
 
-            SKIP: {
-                skip "Request timeout, skipping", $skip + 2
-                    if($query->error && $query->error =~ /read timeout/);
+            #diag("url=$url, raw=$raw{$url}");
 
-                is($query->error,$args->{error},'.. no error reported');
-                is($query->raw,$args->{raw},'.. raw query matches') if(defined $args->{raw});
+            is($query->error,$args->{error},'.. no error reported');
+            is($query->raw,$args->{raw},'.. raw query matches') if(defined $args->{raw});
 
-                if($data && $args->{results}) {
-                    is($data->{$_},$args->{results}{$_},".. got '$_' in date hash [$args->{date}]") for(keys %{$args->{results}});
-                } elsif($args->{results}) {
-                    SKIP: {
-                        skip "No response from request, site may be down", $skip;
+            if($data && $args->{results}) {
+                is($data->{$_},$args->{results}{$_},".. got '$_' in date hash [$args->{date}]") for(keys %{$args->{results}});
 
-                        #diag($query->error());
-                        if($args->{results}) { ok(1)   for(keys %{$args->{results}}) }
-                    }
-                } else {
-                    is($data, undef,".. got no results, as expected [$args->{date}]");
-                }
+            } elsif($args->{results}) {
+                diag($query->error());
+                if($args->{results}) { ok(0)   for(keys %{$args->{results}}) }
+
+            } else {
+                is($data, undef,".. got no results, as expected [$args->{date}]");
             }
 
         } elsif(defined $args->{range}) {
             my $data = $query->range( $args->{range} );
-            my $skip = $args->{results} ? scalar(keys %{$args->{results}}) : 0;
-            for(qw(start stop count)) {
-                $skip++ if($args->{$_});
-            }
 
-            SKIP: {
-                skip "Request timeout, skipping", $skip + 2
-                    if($query->error && $query->error =~ /read timeout/);
+            is($query->error,$args->{error},'.. no error reported');
+            is($query->raw,$args->{raw},'.. raw query matches') if(defined $args->{raw});
 
-                is($query->error,$args->{error},'.. no error reported');
-                is($query->raw,$args->{raw},'.. raw query matches') if(defined $args->{raw});
-
-                if($data) {
-                    if($args->{results}) {
-                        #diag(Dumper( $data ));
-                        is_deeply($data->{$_},$args->{results}{$_},".. got '$_' in range hash [$args->{range}]") 
-                            for(keys %{$args->{results}});
-                    }
-                    my @keys = sort { $a <=> $b } keys %$data;
-                    if($args->{start}) {
-                        is($keys[0], $args->{start},".. got start value [$args->{range}]");
-                    }
-                    if($args->{stop}) {
-                        is($keys[-1], $args->{stop},".. got stop value [$args->{range}]");
-                    }
-                    if($args->{count}) {
-                        cmp_ok(scalar @keys, '<=', $args->{count},".. counted number of records [$args->{range}]");
-                    }
-                } else {
-                    SKIP: {
-                        skip "No response from request, site may be down", $skip;
-
-                        #diag($query->error());
-                        if($args->{results}) { ok(1)   for(keys %{$args->{results}}) }
-                        ok(1)   if($args->{start});
-                        ok(1)   if($args->{stop});
-                        ok(1)   if($args->{count});
-                    }
+            if($data) {
+                if($args->{results}) {
+                    #diag(Dumper( $data ));
+                    is_deeply($data->{$_},$args->{results}{$_},".. got '$_' in range hash [$args->{range}]") 
+                        for(keys %{$args->{results}});
                 }
+                my @keys = sort { $a <=> $b } keys %$data;
+                if($args->{start}) {
+                    is($keys[0], $args->{start},".. got start value [$args->{range}]");
+                }
+                if($args->{stop}) {
+                    is($keys[-1], $args->{stop},".. got stop value [$args->{range}]");
+                }
+                if($args->{count}) {
+                    cmp_ok(scalar @keys, '<=', $args->{count},".. counted number of records [$args->{range}]");
+                }
+
+            } else {
+                diag($query->error());
+                if($args->{results}) { ok(0)   for(keys %{$args->{results}}) }
+                ok(0)   if($args->{start});
+                ok(0)   if($args->{stop});
+                ok(0)   if($args->{count});
             }
 
         } else {
             ok(0,'missing date or range test');
         }
     }
-}
-
-# crude, but it'll hopefully do ;)
-sub pingtest {
-    my $domain = 'www.cpantesters.org';
-    my $cmd =   $^O =~ /solaris/i                           ? "ping -s $domain 56 1" :
-                $^O =~ /dos|os2|mswin32|netware|cygwin/i    ? "ping -n 1 $domain "
-                                                            : "ping -c 1 $domain >/dev/null 2>&1";
-
-    system($cmd);
-    my $retcode = $? >> 8;
-    # ping returns 1 if unable to connect
-    return $retcode;
 }
