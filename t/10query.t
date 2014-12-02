@@ -138,7 +138,7 @@ SKIP: {
 
             SKIP: {
                 skip "Request timeout, skipping", $skip + 2
-                    if($query->error && $query->error =~ /read timeout/);
+                    if($query->error && $query->error =~ /read timeout|Can't connect to www.cpantesters.org/);
 
                 is($query->error,$args->{error},'.. no error reported');
                 is($query->raw,$args->{raw},'.. raw query matches') if(defined $args->{raw});
@@ -166,7 +166,7 @@ SKIP: {
 
             SKIP: {
                 skip "Request timeout, skipping", $skip + 2
-                    if($query->error && $query->error =~ /read timeout/);
+                    if($query->error && $query->error =~ /read timeout|Can't connect to www.cpantesters.org/);
 
                 is($query->error,$args->{error},'.. no error reported');
                 is($query->raw,$args->{raw},'.. raw query matches') if(defined $args->{raw});
@@ -210,7 +210,8 @@ SKIP: {
 sub pingtest {
     my $domain = 'www.cpantesters.org';
     my $cmd =   $^O =~ /solaris/i                           ? "ping -s $domain 56 1" :
-                $^O =~ /dos|os2|mswin32|netware|cygwin/i    ? "ping -n 1 $domain "
+                $^O =~ /cygwin/i                            ? "ping $domain 56 1" : # ping [ -dfqrv ] host [ packetsize [ count [ preload ]]]
+                $^O =~ /dos|os2|mswin32|netware/i           ? "ping -n 1 $domain "
                                                             : "ping -c 1 $domain >/dev/null 2>&1";
 
     system($cmd);
